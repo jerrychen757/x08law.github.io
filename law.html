@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>裁判書查詢系統</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .search-bar {
+            margin: 20px auto;
+            max-width: 500px;
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .results {
+            margin-top: 20px;
+            text-align: left;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>裁判書查詢系統</h1>
+    <div class="search-bar">
+        <input type="text" id="searchQuery" placeholder="輸入關鍵字...">
+        <button onclick="handleSearch()">查詢</button>
+    </div>
+    <div class="results" id="results"></div>
+    <iframe id="iframe" src="" style="display:none;"></iframe>
+
+    <script>
+        async function handleSearch() {
+            const query = document.getElementById("searchQuery").value.trim();
+            const resultsDiv = document.getElementById("results");
+            const iframe = document.getElementById("iframe");
+
+            if (!query) {
+                resultsDiv.innerHTML = "<p>請輸入關鍵字。</p>";
+                return;
+            }
+
+            const currentHour = new Date().getHours();
+
+            if (currentHour >= 0 && currentHour <= 6) {
+                // 在 0-6 時使用 API 查詢
+                resultsDiv.innerHTML = "<p>查詢中...</p>";
+                iframe.style.display = "none"; // 隱藏 iframe
+
+                try {
+                    // 替換為實際 API URL
+                    const apiUrl = `https://api.judicial.gov.tw/v1/judgments?query=${encodeURIComponent(query)}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            // "Authorization": "Bearer YOUR_API_KEY" // 如果需要 API Key，解除註解並替換
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API 錯誤：${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    // 顯示查詢結果
+                    if (data && data.judgments && data.judgments.length > 0) {
+                        resultsDiv.innerHTML = data.judgments
+                            .map(
+                                (judgment) => `
+                                <div>
+                                    <h3>${judgment.title}</h3>
+                                    <p>${judgment.summary}</p>
+                                    <a href="${judgment.link}" target="_blank">閱讀完整裁判書</a>
+                                </div>
+                                <hr>
+                            `
+                            )
+                            .join("");
+                    } else {
+                        resultsDiv.innerHTML = "<p>未找到相關結果。</p>";
+                    }
+                } catch (error) {
+                    resultsDiv.innerHTML = `<p>發生錯誤：${error.message}</p>`;
+                }
+            } else {
+                // 在非 0-6 時段直接顯示裁判書系統頁面
+                iframe.src = `https://judgment.judicial.gov.tw/FJUD/default.aspx`;
+                iframe.style.display = "block";
+                resultsDiv.innerHTML = "<p>由於 API 僅在 0-6 時提供服務，已跳轉至裁判書查詢系統。</p>";
+            }
+        }
+    </script>
+</body>
+</html>
